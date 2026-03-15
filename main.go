@@ -1,0 +1,34 @@
+package main
+
+import (
+	"log"
+	"net/http"
+)
+
+// define a home handler function which writes a byte slice containing
+// "Hello from Snippetbox" as the response body
+func home(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello from Snippetbox"))
+}
+
+func main() {
+	// Use the http.NewServeMux() function to initialize a new servemux
+	// then register the home function as the handler for the
+	// "/" URL pattern
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", home)
+
+	// Print a log message to say that the server is starting
+	log.Print("starting server on :4000")
+
+	// Use the http.ListenAndServe() function to start a new web server.
+	// We pass in two parameters
+	// 1. the TCP network address to listen on (:4000)
+	// 2. the servemux we just created.
+	// if http.ListenAndServe() returns an error
+	// we use the log.Fatal() function to log the error message and terminate
+	// the program.
+	// Note than any error return by http.ListenAndServe() is always non-nil
+	err := http.ListenAndServe(":4000", mux)
+	log.Fatal(err)
+}
