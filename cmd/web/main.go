@@ -1,23 +1,59 @@
 package main
 
 import (
-	"log"
+	"database/sql"
+	"flag"
+	"log/slog"
 	"net/http"
+	"os"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/steveg22/snippetbox/internal/models"
 )
 
+type application struct {
+	logger   *slog.Logger
+	snippets *models.SnippetModel
+}
+
 func main() {
-	mux := http.NewServeMux()
+	addr := flag.String("addr", ":4000", "HTTP Network Address")
+	dsn := flag.String("dsn", "web:pass@tcp(pi:3306)/snippetbox?parseTime=true", "MySQL data source name")
 
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
+	flag.Parse()
 
-	mux.HandleFunc("GET /{$}", home)
-	mux.HandleFunc("GET /snippet/view/{id}", snippetView)
-	mux.HandleFunc("GET /snippet/create", snippetCreate)
-	mux.HandleFunc("POST /snippet/create", snippetCreatePost)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	log.Println("Starting server on :4000")
+	db, err := openDB(*dsn)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+	defer db.Close()
 
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
+	app := &application{
+		logger:   logger,
+		snippets: &models.SnippetModel{DB: db},
+	}
+
+	app.logger.Info("starting server", "addr", *addr)
+
+	err = http.ListenAndServe(*addr, app.routes())
+	app.logger.Error(err.Error())
+	os.Exit(1)
+}
+
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return db, nil
 }
