@@ -8,14 +8,19 @@ import (
 	"net/http"
 	"os"
 
+	// "github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/steveg22/snippetbox/internal/models"
 )
 
 type application struct {
-	logger        *slog.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
+	logger         *slog.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -39,10 +44,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	formDecoder := form.NewDecoder()
+
 	app := &application{
 		logger:        logger,
 		snippets:      &models.SnippetModel{DB: db},
 		templateCache: templateCache,
+		formDecoder:   formDecoder,
 	}
 
 	app.logger.Info("starting server", "addr", *addr)
